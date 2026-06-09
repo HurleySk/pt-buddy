@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #000;
+    color: #fff;
+    font-family: sans-serif;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .mode-label {
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  .sides {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .side {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: #555;
+  }
+
+  .side.active {
+    color: #000;
+  }
+
+  .main-value {
+    font-size: 72px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  .sub-label {
+    font-size: 14px;
+    color: #888;
+    margin-top: 4px;
+  }
+
+  .set-label {
+    font-size: 13px;
+    color: #aaa;
+    margin-top: 12px;
+  }
+
+  .progress-ring {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  .progress-ring circle {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  /* Color themes */
+  .theme-count .mode-label { color: #4CAF50; }
+  .theme-count .side.active { background: #4CAF50; }
+
+  .theme-hold .mode-label { color: #FF9800; }
+  .theme-hold .side.active { background: #FF9800; }
+
+  .theme-rest .mode-label { color: #2196F3; }
+</style>
+</head>
+<body>
+  <!--
+    NOTE: Template variable syntax (shown as {{var}}) is a placeholder.
+    Replace with the actual SuuntoPlus template binding syntax
+    found in the editor's reference documentation.
+  -->
+  <svg class="progress-ring" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="95"
+      stroke="{{theme_color}}"
+      stroke-dasharray="597"
+      stroke-dashoffset="{{(1 - progress) * 597}}" />
+  </svg>
+
+  <div class="mode-label">{{mode_label}}</div>
+
+  <div class="sides" style="display: {{bilateral ? 'flex' : 'none'}}">
+    <span class="side {{active_side === 'L' ? 'active' : ''}}">L</span>
+    <span class="side {{active_side === 'R' ? 'active' : ''}}">R</span>
+  </div>
+
+  <div class="main-value">{{main_value}}</div>
+  <div class="sub-label">{{sub_label}}</div>
+  <div class="set-label">{{set_label}}</div>
+</body>
+</html>
