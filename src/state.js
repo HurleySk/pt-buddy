@@ -22,11 +22,13 @@ export function isFresh(state) {
 function transitionFromExercise(state, effects) {
   var next = Object.assign({}, state);
   if (state.bilateral && state.activeSide === "L") {
+    effects.push({ type: "vibrate", pattern: "short", count: 1 });
     next.activeSide = "R";
     next.timerRemaining = state.holdDuration;
     next.timerRunning = true;
     return { state: next, effects: effects };
   }
+  effects.push({ type: "vibrate", pattern: "short", count: 3 });
   return transitionToRest(next, effects);
 }
 
@@ -59,6 +61,7 @@ export function actionTap(state) {
 }
 
 function completeRest(state, effects) {
+  effects.push({ type: "vibrate", pattern: "long", count: 2 });
   var next = Object.assign({}, state);
   next.mode = state.previousMode;
   next.set = state.set + 1;
@@ -77,6 +80,7 @@ export function transitionTap(state) {
       return { state: state, effects: effects };
     }
     if (state.bilateral && state.activeSide === "L") {
+      effects.push({ type: "vibrate", pattern: "short", count: 1 });
       next.activeSide = "R";
       next.reps = 0;
       return { state: next, effects: effects };
@@ -132,6 +136,9 @@ export function tick(state) {
   var next = Object.assign({}, state);
   var effects = [];
   next.timerRemaining = state.timerRemaining - 1;
+  if (next.timerRemaining === 5) {
+    effects.push({ type: "vibrate", pattern: "short", count: 1 });
+  }
   if (next.timerRemaining <= 0) {
     next.timerRunning = false;
     if (state.mode === "hold") {

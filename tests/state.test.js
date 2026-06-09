@@ -465,3 +465,85 @@ describe("bilateral hold flow", function () {
     expect(result.state.timerRemaining).toBe(45);
   });
 });
+
+describe("haptic effects", function () {
+  it("no vibration on rep count tap", function () {
+    var s = createState();
+    var result = actionTap(s);
+    expect(result.effects).toEqual([]);
+  });
+  it("3 short pulses on hold timer completion", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
+  });
+  it("2 long pulses on rest completion", function () {
+    var s = createState();
+    s.mode = "rest";
+    s.previousMode = "count";
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
+  });
+  it("1 short pulse on side switch (bilateral hold L→R)", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.bilateral = true;
+    s.activeSide = "L";
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
+  });
+  it("1 short pulse on side switch (bilateral count L→R)", function () {
+    var s = createState();
+    s.bilateral = true;
+    s.activeSide = "L";
+    s.reps = 5;
+    var result = transitionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
+  });
+  it("1 short pulse at 5-second warning", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.timerRunning = true;
+    s.timerRemaining = 6;
+    var result = tick(s);
+    expect(result.state.timerRemaining).toBe(5);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
+  });
+  it("no 5-second warning when timer not running", function () {
+    var s = createState();
+    s.timerRemaining = 6;
+    var result = tick(s);
+    expect(result.effects).toEqual([]);
+  });
+  it("2 long pulses when ending rest early via actionTap", function () {
+    var s = createState();
+    s.mode = "rest";
+    s.previousMode = "count";
+    s.timerRunning = true;
+    s.timerRemaining = 20;
+    var result = actionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
+  });
+  it("3 short pulses when ending hold early via actionTap", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.timerRunning = true;
+    s.timerRemaining = 15;
+    var result = actionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
+  });
+});
