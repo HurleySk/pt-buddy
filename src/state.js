@@ -18,3 +18,12 @@ export function isFresh(state) {
   if (state.mode === "hold") return !state.timerRunning;
   return false;
 }
+
+export function actionTap(state) {
+  var next = Object.assign({}, state);
+  var effects = [];
+  if (state.mode === "count") {
+    next.reps = state.reps + 1;
+  }
+  return { state: next, effects: effects };
+}

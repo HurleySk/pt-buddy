@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createState, isFresh } from "../src/state.js";
+import { createState, isFresh, actionTap } from "../src/state.js";
 
 describe("createState", function () {
   it("returns default state", function () {
@@ -46,5 +46,28 @@ describe("isFresh", function () {
     var s = createState();
     s.mode = "rest";
     expect(isFresh(s)).toBe(false);
+  });
+});
+
+describe("actionTap", function () {
+  it("increments reps in count mode", function () {
+    var s = createState();
+    var result = actionTap(s);
+    expect(result.state.reps).toBe(1);
+    expect(result.effects).toEqual([]);
+  });
+
+  it("accumulates reps over multiple taps", function () {
+    var s = createState();
+    var r1 = actionTap(s);
+    var r2 = actionTap(r1.state);
+    var r3 = actionTap(r2.state);
+    expect(r3.state.reps).toBe(3);
+  });
+
+  it("does not change mode", function () {
+    var s = createState();
+    var result = actionTap(s);
+    expect(result.state.mode).toBe("count");
   });
 });
