@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createState, isFresh, actionTap } from "../src/state.js";
+import { createState, isFresh, actionTap, transitionTap } from "../src/state.js";
 
 describe("createState", function () {
   it("returns default state", function () {
@@ -69,5 +69,45 @@ describe("actionTap", function () {
     var s = createState();
     var result = actionTap(s);
     expect(result.state.mode).toBe("count");
+  });
+});
+
+describe("transitionTap", function () {
+  describe("in count mode", function () {
+    it("does nothing with 0 reps", function () {
+      var s = createState();
+      var result = transitionTap(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.reps).toBe(0);
+    });
+
+    it("transitions to rest with reps > 0", function () {
+      var s = createState();
+      s.reps = 10;
+      var result = transitionTap(s);
+      expect(result.state.mode).toBe("rest");
+    });
+
+    it("sets previousMode to count", function () {
+      var s = createState();
+      s.reps = 10;
+      var result = transitionTap(s);
+      expect(result.state.previousMode).toBe("count");
+    });
+
+    it("starts rest timer with restDuration", function () {
+      var s = createState();
+      s.reps = 10;
+      var result = transitionTap(s);
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
+    });
+
+    it("resets reps to 0", function () {
+      var s = createState();
+      s.reps = 10;
+      var result = transitionTap(s);
+      expect(result.state.reps).toBe(0);
+    });
   });
 });
