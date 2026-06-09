@@ -19,6 +19,17 @@ export function isFresh(state) {
   return false;
 }
 
+function transitionFromExercise(state, effects) {
+  var next = Object.assign({}, state);
+  if (state.bilateral && state.activeSide === "L") {
+    next.activeSide = "R";
+    next.timerRemaining = state.holdDuration;
+    next.timerRunning = true;
+    return { state: next, effects: effects };
+  }
+  return transitionToRest(next, effects);
+}
+
 function transitionToRest(state, effects) {
   var next = Object.assign({}, state);
   next.previousMode = state.mode;
@@ -41,7 +52,7 @@ export function actionTap(state) {
       next.timerRunning = true;
       next.timerRemaining = state.holdDuration;
     } else {
-      return transitionToRest(next, effects);
+      return transitionFromExercise(next, effects);
     }
   }
   return { state: next, effects: effects };
@@ -65,6 +76,11 @@ export function transitionTap(state) {
     if (state.reps === 0) {
       return { state: state, effects: effects };
     }
+    if (state.bilateral && state.activeSide === "L") {
+      next.activeSide = "R";
+      next.reps = 0;
+      return { state: next, effects: effects };
+    }
     return transitionToRest(next, effects);
   } else if (state.mode === "rest") {
     next.timerRemaining = state.timerRemaining + 10;
@@ -77,6 +93,16 @@ export function transitionTap(state) {
     return { state: next, effects: effects };
   }
   return { state: state, effects: effects };
+}
+
+export function transitionLongPress(state) {
+  if (!isFresh(state)) {
+    return { state: state, effects: [] };
+  }
+  var next = Object.assign({}, state);
+  next.bilateral = !state.bilateral;
+  next.activeSide = "L";
+  return { state: next, effects: [] };
 }
 
 export function actionLongPress(state) {
@@ -109,7 +135,7 @@ export function tick(state) {
   if (next.timerRemaining <= 0) {
     next.timerRunning = false;
     if (state.mode === "hold") {
-      return transitionToRest(next, effects);
+      return transitionFromExercise(next, effects);
     } else if (state.mode === "rest") {
       return completeRest(next, effects);
     }

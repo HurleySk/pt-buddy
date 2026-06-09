@@ -350,3 +350,118 @@ describe("actionLongPress", function () {
     expect(result.state.bilateral).toBe(true);
   });
 });
+
+describe("transitionLongPress", function () {
+  it("toggles bilateral on when fresh", function () {
+    var s = createState();
+    var result = transitionLongPress(s);
+    expect(result.state.bilateral).toBe(true);
+  });
+  it("toggles bilateral off when fresh", function () {
+    var s = createState();
+    s.bilateral = true;
+    var result = transitionLongPress(s);
+    expect(result.state.bilateral).toBe(false);
+  });
+  it("resets activeSide to L", function () {
+    var s = createState();
+    s.activeSide = "R";
+    var result = transitionLongPress(s);
+    expect(result.state.activeSide).toBe("L");
+  });
+  it("is ignored mid-set", function () {
+    var s = createState();
+    s.reps = 5;
+    var result = transitionLongPress(s);
+    expect(result.state.bilateral).toBe(false);
+  });
+  it("is ignored in rest mode", function () {
+    var s = createState();
+    s.mode = "rest";
+    s.timerRunning = true;
+    var result = transitionLongPress(s);
+    expect(result.state.bilateral).toBe(false);
+  });
+  it("works in hold mode when timer is stopped", function () {
+    var s = createState();
+    s.mode = "hold";
+    var result = transitionLongPress(s);
+    expect(result.state.bilateral).toBe(true);
+  });
+});
+
+describe("bilateral count flow", function () {
+  function bilateralCount() {
+    var s = createState();
+    s.bilateral = true;
+    return s;
+  }
+  it("switches from L to R on first transitionTap", function () {
+    var s = bilateralCount();
+    s.reps = 5;
+    var result = transitionTap(s);
+    expect(result.state.mode).toBe("count");
+    expect(result.state.activeSide).toBe("R");
+    expect(result.state.reps).toBe(0);
+  });
+  it("transitions to rest on second transitionTap (R side)", function () {
+    var s = bilateralCount();
+    s.reps = 5;
+    s.activeSide = "R";
+    var result = transitionTap(s);
+    expect(result.state.mode).toBe("rest");
+  });
+  it("returns to L side after rest completes", function () {
+    var s = bilateralCount();
+    s.reps = 5;
+    s.activeSide = "R";
+    var restState = transitionTap(s).state;
+    restState.timerRemaining = 1;
+    var result = tick(restState);
+    expect(result.state.activeSide).toBe("L");
+    expect(result.state.mode).toBe("count");
+  });
+});
+
+describe("bilateral hold flow", function () {
+  function bilateralHold() {
+    var s = createState();
+    s.mode = "hold";
+    s.bilateral = true;
+    return s;
+  }
+  it("switches from L to R when hold timer completes", function () {
+    var s = bilateralHold();
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.mode).toBe("hold");
+    expect(result.state.activeSide).toBe("R");
+    expect(result.state.timerRunning).toBe(true);
+    expect(result.state.timerRemaining).toBe(30);
+  });
+  it("transitions to rest when R side hold completes", function () {
+    var s = bilateralHold();
+    s.activeSide = "R";
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.mode).toBe("rest");
+  });
+  it("auto-starts hold timer on R side", function () {
+    var s = bilateralHold();
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.timerRunning).toBe(true);
+    expect(result.state.timerRemaining).toBe(30);
+  });
+  it("uses configured holdDuration for R side", function () {
+    var s = bilateralHold();
+    s.holdDuration = 45;
+    s.timerRunning = true;
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.timerRemaining).toBe(45);
+  });
+});
