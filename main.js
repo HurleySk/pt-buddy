@@ -73,6 +73,7 @@ function completeRest(state, effects) {
   next.timerRunning = false;
   next.timerRemaining = 0;
   next.activeSide = "L";
+  next.restDuration = 30;
   return { state: next, effects: effects };
 }
 
@@ -140,7 +141,7 @@ function tick(state) {
   var next = Object.assign({}, state);
   var effects = [];
   next.timerRemaining = state.timerRemaining - 1;
-  if (next.timerRemaining === 5) {
+  if (next.timerRemaining <= 5 && state.timerRemaining > 5) {
     effects.push({ type: "vibrate", pattern: "short", count: 1 });
   }
   if (next.timerRemaining <= 0) {

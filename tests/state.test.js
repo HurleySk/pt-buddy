@@ -547,3 +547,56 @@ describe("haptic effects", function () {
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
   });
 });
+
+describe("restDuration reset", function () {
+  it("resets restDuration to 30 after rest completes", function () {
+    var s = createState();
+    s.reps = 5;
+    var rest = transitionTap(s).state;
+    var extended = transitionTap(rest).state;
+    expect(extended.restDuration).toBe(40);
+    extended.timerRemaining = 1;
+    var done = tick(extended).state;
+    expect(done.restDuration).toBe(30);
+  });
+
+  it("next rest starts at 30s even after previous rest was extended", function () {
+    var s = createState();
+    s.reps = 5;
+    var rest = transitionTap(s).state;
+    var extended = transitionTap(rest).state;
+    extended.timerRemaining = 1;
+    var afterRest = tick(extended).state;
+    afterRest.reps = 5;
+    var nextRest = transitionTap(afterRest).state;
+    expect(nextRest.timerRemaining).toBe(30);
+  });
+});
+
+describe("bilateral hold early exit", function () {
+  it("switches from L to R when ending hold early via actionTap", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.bilateral = true;
+    s.activeSide = "L";
+    s.timerRunning = true;
+    s.timerRemaining = 15;
+    var result = actionTap(s);
+    expect(result.state.mode).toBe("hold");
+    expect(result.state.activeSide).toBe("R");
+    expect(result.state.timerRunning).toBe(true);
+    expect(result.state.timerRemaining).toBe(30);
+  });
+
+  it("vibrates side switch when ending hold early on L side", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.bilateral = true;
+    s.activeSide = "L";
+    s.timerRunning = true;
+    s.timerRemaining = 15;
+    var result = actionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
+  });
+});
