@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createState, isFresh, actionTap, transitionTap, tick } from "../src/state.js";
+import { createState, isFresh, actionTap, transitionTap, tick, actionLongPress, transitionLongPress } from "../src/state.js";
 
 describe("createState", function () {
   it("returns default state", function () {
@@ -281,5 +281,72 @@ describe("tick", function () {
       expect(result.state.timerRunning).toBe(true);
       expect(result.state.timerRemaining).toBe(30);
     });
+  });
+});
+
+describe("actionLongPress", function () {
+  it("switches from count to hold when fresh", function () {
+    var s = createState();
+    var result = actionLongPress(s);
+    expect(result.state.mode).toBe("hold");
+  });
+  it("switches from hold to count when fresh", function () {
+    var s = createState();
+    s.mode = "hold";
+    var result = actionLongPress(s);
+    expect(result.state.mode).toBe("count");
+  });
+  it("is ignored mid-set in count mode", function () {
+    var s = createState();
+    s.reps = 5;
+    var result = actionLongPress(s);
+    expect(result.state.mode).toBe("count");
+    expect(result.state.reps).toBe(5);
+  });
+  it("is ignored when hold timer is running", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.timerRunning = true;
+    s.timerRemaining = 15;
+    var result = actionLongPress(s);
+    expect(result.state.mode).toBe("hold");
+  });
+  it("is ignored in rest mode", function () {
+    var s = createState();
+    s.mode = "rest";
+    s.timerRunning = true;
+    var result = actionLongPress(s);
+    expect(result.state.mode).toBe("rest");
+  });
+  it("resets set counter to 1", function () {
+    var s = createState();
+    s.set = 3;
+    var result = actionLongPress(s);
+    expect(result.state.set).toBe(1);
+  });
+  it("resets reps to 0", function () {
+    var s = createState();
+    var result = actionLongPress(s);
+    expect(result.state.reps).toBe(0);
+  });
+  it("resets hold and rest durations to 30", function () {
+    var s = createState();
+    s.holdDuration = 60;
+    s.restDuration = 45;
+    var result = actionLongPress(s);
+    expect(result.state.holdDuration).toBe(30);
+    expect(result.state.restDuration).toBe(30);
+  });
+  it("resets activeSide to L", function () {
+    var s = createState();
+    s.activeSide = "R";
+    var result = actionLongPress(s);
+    expect(result.state.activeSide).toBe("L");
+  });
+  it("preserves bilateral setting", function () {
+    var s = createState();
+    s.bilateral = true;
+    var result = actionLongPress(s);
+    expect(result.state.bilateral).toBe(true);
   });
 });

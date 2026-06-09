@@ -79,6 +79,26 @@ export function transitionTap(state) {
   return { state: state, effects: effects };
 }
 
+export function actionLongPress(state) {
+  if (!isFresh(state)) {
+    return { state: state, effects: [] };
+  }
+  var next = Object.assign({}, state);
+  if (state.mode === "count") {
+    next.mode = "hold";
+  } else if (state.mode === "hold") {
+    next.mode = "count";
+  }
+  next.reps = 0;
+  next.set = 1;
+  next.holdDuration = 30;
+  next.restDuration = 30;
+  next.timerRunning = false;
+  next.timerRemaining = 0;
+  next.activeSide = "L";
+  return { state: next, effects: [] };
+}
+
 export function tick(state) {
   if (!state.timerRunning) {
     return { state: state, effects: [] };
