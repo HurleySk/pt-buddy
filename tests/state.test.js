@@ -91,6 +91,37 @@ describe("actionTap", function () {
       expect(result.state.set).toBe(2);
     });
   });
+
+  describe("in hold mode", function () {
+    function freshHold() {
+      var s = createState();
+      s.mode = "hold";
+      return s;
+    }
+
+    it("starts hold timer when stopped", function () {
+      var s = freshHold();
+      var result = actionTap(s);
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
+    });
+
+    it("uses configured holdDuration", function () {
+      var s = freshHold();
+      s.holdDuration = 45;
+      var result = actionTap(s);
+      expect(result.state.timerRemaining).toBe(45);
+    });
+
+    it("ends hold early when timer is running", function () {
+      var s = freshHold();
+      s.timerRunning = true;
+      s.timerRemaining = 15;
+      var result = actionTap(s);
+      expect(result.state.mode).toBe("rest");
+      expect(result.state.previousMode).toBe("hold");
+    });
+  });
 });
 
 describe("transitionTap", function () {
@@ -145,6 +176,25 @@ describe("transitionTap", function () {
       var result = transitionTap(s);
       expect(result.state.timerRemaining).toBe(40);
       expect(result.state.restDuration).toBe(40);
+    });
+  });
+
+  describe("in hold mode", function () {
+    it("adds 10s to hold duration before starting", function () {
+      var s = createState();
+      s.mode = "hold";
+      expect(s.holdDuration).toBe(30);
+      var result = transitionTap(s);
+      expect(result.state.holdDuration).toBe(40);
+    });
+
+    it("does nothing while hold timer is running", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.timerRunning = true;
+      s.timerRemaining = 20;
+      var result = transitionTap(s);
+      expect(result.state.timerRemaining).toBe(20);
     });
   });
 });
@@ -208,5 +258,28 @@ describe("tick", function () {
     s.activeSide = "R";
     var result = tick(s);
     expect(result.state.activeSide).toBe("L");
+  });
+
+  describe("in hold mode", function () {
+    it("decrements hold timer", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.timerRunning = true;
+      s.timerRemaining = 20;
+      var result = tick(s);
+      expect(result.state.timerRemaining).toBe(19);
+    });
+
+    it("transitions to rest when hold timer completes", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.timerRunning = true;
+      s.timerRemaining = 1;
+      var result = tick(s);
+      expect(result.state.mode).toBe("rest");
+      expect(result.state.previousMode).toBe("hold");
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
+    });
   });
 });

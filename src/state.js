@@ -36,6 +36,13 @@ export function actionTap(state) {
     next.reps = state.reps + 1;
   } else if (state.mode === "rest") {
     return completeRest(next, effects);
+  } else if (state.mode === "hold") {
+    if (!state.timerRunning) {
+      next.timerRunning = true;
+      next.timerRemaining = state.holdDuration;
+    } else {
+      return transitionToRest(next, effects);
+    }
   }
   return { state: next, effects: effects };
 }
@@ -63,6 +70,11 @@ export function transitionTap(state) {
     next.timerRemaining = state.timerRemaining + 10;
     next.restDuration = state.restDuration + 10;
     return { state: next, effects: effects };
+  } else if (state.mode === "hold") {
+    if (!state.timerRunning) {
+      next.holdDuration = state.holdDuration + 10;
+    }
+    return { state: next, effects: effects };
   }
   return { state: state, effects: effects };
 }
@@ -76,7 +88,9 @@ export function tick(state) {
   next.timerRemaining = state.timerRemaining - 1;
   if (next.timerRemaining <= 0) {
     next.timerRunning = false;
-    if (state.mode === "rest") {
+    if (state.mode === "hold") {
+      return transitionToRest(next, effects);
+    } else if (state.mode === "rest") {
       return completeRest(next, effects);
     }
   }
