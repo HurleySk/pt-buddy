@@ -34,6 +34,8 @@ export function actionTap(state) {
   var effects = [];
   if (state.mode === "count") {
     next.reps = state.reps + 1;
+  } else if (state.mode === "rest") {
+    return completeRest(next, effects);
   }
   return { state: next, effects: effects };
 }
@@ -57,6 +59,10 @@ export function transitionTap(state) {
       return { state: state, effects: effects };
     }
     return transitionToRest(next, effects);
+  } else if (state.mode === "rest") {
+    next.timerRemaining = state.timerRemaining + 10;
+    next.restDuration = state.restDuration + 10;
+    return { state: next, effects: effects };
   }
   return { state: state, effects: effects };
 }

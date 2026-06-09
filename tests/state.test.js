@@ -70,6 +70,27 @@ describe("actionTap", function () {
     var result = actionTap(s);
     expect(result.state.mode).toBe("count");
   });
+
+  describe("in rest mode", function () {
+    function enterRest() {
+      var s = createState();
+      s.reps = 5;
+      return transitionTap(s).state;
+    }
+
+    it("ends rest early and returns to previous mode", function () {
+      var s = enterRest();
+      var result = actionTap(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.timerRunning).toBe(false);
+    });
+
+    it("increments set when ending rest early", function () {
+      var s = enterRest();
+      var result = actionTap(s);
+      expect(result.state.set).toBe(2);
+    });
+  });
 });
 
 describe("transitionTap", function () {
@@ -108,6 +129,22 @@ describe("transitionTap", function () {
       s.reps = 10;
       var result = transitionTap(s);
       expect(result.state.reps).toBe(0);
+    });
+  });
+
+  describe("in rest mode", function () {
+    function enterRest() {
+      var s = createState();
+      s.reps = 5;
+      return transitionTap(s).state;
+    }
+
+    it("adds 10s to rest timer", function () {
+      var s = enterRest();
+      expect(s.timerRemaining).toBe(30);
+      var result = transitionTap(s);
+      expect(result.state.timerRemaining).toBe(40);
+      expect(result.state.restDuration).toBe(40);
     });
   });
 });
