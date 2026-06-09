@@ -38,6 +38,17 @@ export function actionTap(state) {
   return { state: next, effects: effects };
 }
 
+function completeRest(state, effects) {
+  var next = Object.assign({}, state);
+  next.mode = state.previousMode;
+  next.set = state.set + 1;
+  next.reps = 0;
+  next.timerRunning = false;
+  next.timerRemaining = 0;
+  next.activeSide = "L";
+  return { state: next, effects: effects };
+}
+
 export function transitionTap(state) {
   var next = Object.assign({}, state);
   var effects = [];
@@ -48,4 +59,20 @@ export function transitionTap(state) {
     return transitionToRest(next, effects);
   }
   return { state: state, effects: effects };
+}
+
+export function tick(state) {
+  if (!state.timerRunning) {
+    return { state: state, effects: [] };
+  }
+  var next = Object.assign({}, state);
+  var effects = [];
+  next.timerRemaining = state.timerRemaining - 1;
+  if (next.timerRemaining <= 0) {
+    next.timerRunning = false;
+    if (state.mode === "rest") {
+      return completeRest(next, effects);
+    }
+  }
+  return { state: next, effects: effects };
 }

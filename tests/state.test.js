@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createState, isFresh, actionTap, transitionTap } from "../src/state.js";
+import { createState, isFresh, actionTap, transitionTap, tick } from "../src/state.js";
 
 describe("createState", function () {
   it("returns default state", function () {
@@ -109,5 +109,67 @@ describe("transitionTap", function () {
       var result = transitionTap(s);
       expect(result.state.reps).toBe(0);
     });
+  });
+});
+
+describe("tick", function () {
+  function enterRest() {
+    var s = createState();
+    s.reps = 5;
+    return transitionTap(s).state;
+  }
+
+  it("does nothing when timer is not running", function () {
+    var s = createState();
+    var result = tick(s);
+    expect(result.state).toEqual(s);
+    expect(result.effects).toEqual([]);
+  });
+
+  it("decrements timerRemaining in rest mode", function () {
+    var s = enterRest();
+    var result = tick(s);
+    expect(result.state.timerRemaining).toBe(29);
+    expect(result.state.timerRunning).toBe(true);
+  });
+
+  it("completes rest when timer reaches 0", function () {
+    var s = enterRest();
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.mode).toBe("count");
+    expect(result.state.timerRunning).toBe(false);
+    expect(result.state.timerRemaining).toBe(0);
+  });
+
+  it("increments set on rest completion", function () {
+    var s = enterRest();
+    s.timerRemaining = 1;
+    expect(s.set).toBe(1);
+    var result = tick(s);
+    expect(result.state.set).toBe(2);
+  });
+
+  it("returns to previousMode on rest completion", function () {
+    var s = enterRest();
+    s.timerRemaining = 1;
+    expect(s.previousMode).toBe("count");
+    var result = tick(s);
+    expect(result.state.mode).toBe("count");
+  });
+
+  it("resets reps on rest completion", function () {
+    var s = enterRest();
+    s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.reps).toBe(0);
+  });
+
+  it("resets activeSide to L on rest completion", function () {
+    var s = enterRest();
+    s.timerRemaining = 1;
+    s.activeSide = "R";
+    var result = tick(s);
+    expect(result.state.activeSide).toBe("L");
   });
 });
