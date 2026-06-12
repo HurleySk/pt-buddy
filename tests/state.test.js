@@ -61,19 +61,20 @@ describe("actionTap (Up)", function () {
   });
 
   describe("in hold mode", function () {
-    it("steps up holdDuration before starting", function () {
+    it("cycles duration in setup", function () {
       var s = createState(); s.mode = "hold";
       var result = actionTap(s);
       expect(result.state.holdDuration).toBe(45);
       expect(result.state.timerRunning).toBe(false);
     });
-    it("steps up from 3 to 5", function () {
+    it("cycles through all presets", function () {
       var s = createState(); s.mode = "hold"; s.holdDuration = 3;
-      expect(actionTap(s).state.holdDuration).toBe(5);
-    });
-    it("steps up from 5 to 15", function () {
-      var s = createState(); s.mode = "hold"; s.holdDuration = 5;
-      expect(actionTap(s).state.holdDuration).toBe(15);
+      var durations = [3];
+      for (var i = 0; i < 7; i++) {
+        s = actionTap(s).state;
+        durations.push(s.holdDuration);
+      }
+      expect(durations).toEqual([3, 5, 15, 30, 45, 60, 90, 3]);
     });
     it("adds 15s when timer running", function () {
       var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 20; s.holdDuration = 30;
@@ -125,11 +126,16 @@ describe("transitionTap (Down)", function () {
   });
 
   describe("in hold mode", function () {
-    it("starts hold timer before running", function () {
-      var s = createState(); s.mode = "hold"; s.holdDuration = 45;
+    it("toggles bilateral in setup", function () {
+      var s = createState(); s.mode = "hold";
       var result = transitionTap(s);
-      expect(result.state.timerRunning).toBe(true);
-      expect(result.state.timerRemaining).toBe(45);
+      expect(result.state.bilateral).toBe(true);
+      expect(result.state.activeSide).toBe("L");
+      expect(result.state.timerRunning).toBe(false);
+    });
+    it("toggles bilateral off in setup", function () {
+      var s = createState(); s.mode = "hold"; s.bilateral = true;
+      expect(transitionTap(s).state.bilateral).toBe(false);
     });
     it("ends hold when timer running", function () {
       var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 15;
@@ -167,24 +173,19 @@ describe("actionLongPress (Up long)", function () {
     expect(actionLongPress(s).state.mode).toBe("count");
   });
 
-  describe("step down in hold pre-start", function () {
-    it("subtracts 15s from holdDuration", function () {
+  describe("starts hold timer in setup (GO)", function () {
+    it("starts timer with current holdDuration", function () {
       var s = createState(); s.mode = "hold"; s.holdDuration = 45;
       var result = actionLongPress(s);
-      expect(result.state.holdDuration).toBe(30);
-      expect(result.state.timerRunning).toBe(false);
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(45);
+      expect(result.state.holdDuration).toBe(45);
     });
-    it("steps from 15 to 5", function () {
-      var s = createState(); s.mode = "hold"; s.holdDuration = 15;
-      expect(actionLongPress(s).state.holdDuration).toBe(5);
-    });
-    it("steps from 5 to 3", function () {
-      var s = createState(); s.mode = "hold"; s.holdDuration = 5;
-      expect(actionLongPress(s).state.holdDuration).toBe(3);
-    });
-    it("does not decrease below 3", function () {
-      var s = createState(); s.mode = "hold"; s.holdDuration = 3;
-      expect(actionLongPress(s).state.holdDuration).toBe(3);
+    it("starts timer with default duration", function () {
+      var s = createState(); s.mode = "hold";
+      var result = actionLongPress(s);
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
     });
   });
 
@@ -246,9 +247,33 @@ describe("transitionLongPress (Down long)", function () {
     var s = createState(); s.reps = 5;
     expect(transitionLongPress(s).state.mode).toBe("count");
   });
-  it("ignored in rest", function () {
-    var s = createState(); s.mode = "rest"; s.timerRunning = true;
-    expect(transitionLongPress(s).state.mode).toBe("rest");
+  describe("new exercise from rest", function () {
+    it("returns to previous mode setup", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.set = 3;
+      var result = transitionLongPress(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.timerRunning).toBe(false);
+    });
+    it("resets set to 1", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "hold"; s.set = 3;
+      var result = transitionLongPress(s);
+      expect(result.state.set).toBe(1);
+      expect(result.state.mode).toBe("hold");
+    });
+    it("resets durations to defaults", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.holdDuration = 60; s.restDuration = 45;
+      var result = transitionLongPress(s);
+      expect(result.state.holdDuration).toBe(30);
+      expect(result.state.restDuration).toBe(30);
+    });
+    it("preserves bilateral", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.bilateral = true;
+      expect(transitionLongPress(s).state.bilateral).toBe(true);
+    });
+    it("resets activeSide to L", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.activeSide = "R";
+      expect(transitionLongPress(s).state.activeSide).toBe("L");
+    });
   });
   it("ignored when hold timer running", function () {
     var s = createState(); s.mode = "hold"; s.timerRunning = true;

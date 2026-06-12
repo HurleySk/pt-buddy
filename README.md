@@ -5,25 +5,37 @@ A SuuntoPlus Sports App for tracking physical therapy exercises on your Suunto w
 ## Features
 
 - **Count mode** -- tap to count reps
-- **Hold mode** -- configurable isometric hold timer (default 30s, adjustable down to 3s)
+- **Hold mode** -- configurable isometric hold timer (3s to 90s presets, default 30s)
 - **Rest timer** -- auto-starts between sets (default 30s, adjustable)
 - **Bilateral L/R** -- tracks left and right sides separately before resting
 - **Haptic feedback** -- vibration cues for side switches, warnings, and transitions
-- **Two-button control** -- Up adjusts values, Down proceeds through the workout
+- **Two-button control** -- setup phase configures, active phase controls the workout
 
 ## Controls
 
-The top right button is **Up** (adjust values), the bottom right button is **Down** (proceed through workout).
+The top right button is **Up** (action/adjust), the bottom right button is **Down** (transition/advance).
+
+### Setup (before exercise starts)
 
 | | **Up** | **Up long** | **Down** | **Down long** |
 |---|---|---|---|---|
-| **Count (0 reps)** | +1 rep | -- | Toggle bilateral | Switch to Hold |
-| **Count (reps > 0)** | +1 rep | -- | Next side (bilateral L) / Rest | -- |
-| **Hold (pre-start)** | +duration | -duration | Start timer | Switch to Count |
-| **Hold (running)** | +15s | -15s (auto-advances at ≤15) | End hold | -- |
-| **Rest** | +15s | -15s (auto-completes at ≤15) | Skip rest, next set | -- |
+| **Count (0 reps)** | +1 rep (GO) | -- | Toggle bilateral | Switch mode |
+| **Hold (pre-start)** | Cycle duration | Start timer (GO) | Toggle bilateral | Switch mode |
 
-Hold duration steps: 3 ↔ 5 ↔ 15, then +15s increments (30, 45, 60...).
+Hold duration presets: 3, 5, 15, 30, 45, 60, 90 (wraps around).
+
+### Active (during exercise)
+
+| | **Up** | **Up long** | **Down** | **Down long** |
+|---|---|---|---|---|
+| **Count (reps > 0)** | +1 rep | -- | Next side / End set | -- |
+| **Hold (running)** | +15s | -15s | End hold | -- |
+
+### Rest (between sets)
+
+| | **Up** | **Up long** | **Down** | **Down long** |
+|---|---|---|---|---|
+| **Rest** | +15s | -15s | Next set (same exercise) | New exercise (setup) |
 
 ## Development
 
@@ -54,7 +66,7 @@ The app uses a pure-function state machine pattern:
 - `src/state.js` -- all logic as pure functions: state in, `{state, effects}` out
 - `src/bridge.js` -- SuuntoPlus SDK integration: maps button events to state functions, renders display
 - `t.html` -- watch face template with SuuntoPlus CSS classes
-- `tests/state.test.js` -- Vitest test suite (62 tests)
+- `tests/state.test.js` -- Vitest test suite
 - `scripts/build.js` -- concatenates state + bridge into `main.js` (strips ES module exports, converts function declarations to var expressions for ES5 compatibility)
 
 The state machine is fully testable without any watch or SDK dependencies.

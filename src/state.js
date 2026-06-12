@@ -29,16 +29,18 @@ export function isFresh(state) {
   return false;
 }
 
-function stepUp(value) {
-  if (value < 5) return 5;
-  if (value < 15) return 15;
-  return value + 15;
-}
+var DURATION_PRESETS = [3, 5, 15, 30, 45, 60, 90];
 
-function stepDown(value) {
-  if (value <= 5) return 3;
-  if (value <= 15) return 5;
-  return value - 15;
+function cycleDuration(value) {
+  for (var i = 0; i < DURATION_PRESETS.length; i++) {
+    if (DURATION_PRESETS[i] === value) {
+      return DURATION_PRESETS[(i + 1) % DURATION_PRESETS.length];
+    }
+  }
+  for (var i = 0; i < DURATION_PRESETS.length; i++) {
+    if (DURATION_PRESETS[i] > value) return DURATION_PRESETS[i];
+  }
+  return DURATION_PRESETS[0];
 }
 
 function transitionFromExercise(state, effects) {
@@ -88,7 +90,7 @@ export function actionTap(state) {
     next.restDuration = state.restDuration + 15;
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
-      next.holdDuration = stepUp(state.holdDuration);
+      next.holdDuration = cycleDuration(state.holdDuration);
     } else {
       next.timerRemaining = state.timerRemaining + 15;
       next.holdDuration = state.holdDuration + 15;
@@ -118,8 +120,8 @@ export function transitionTap(state) {
     return completeRest(next, effects);
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
-      next.timerRunning = true;
-      next.timerRemaining = state.holdDuration;
+      next.bilateral = !state.bilateral;
+      next.activeSide = "L";
       return { state: next, effects: effects };
     }
     return transitionFromExercise(next, effects);
@@ -127,7 +129,7 @@ export function transitionTap(state) {
   return { state: state, effects: effects };
 }
 
-// Up button long press — timer adjustments only
+// Up button long press
 export function actionLongPress(state) {
   if (state.mode === "rest") {
     var next = copy(state);
@@ -144,7 +146,8 @@ export function actionLongPress(state) {
     var next = copy(state);
     var effects = [];
     if (!state.timerRunning) {
-      next.holdDuration = stepDown(state.holdDuration);
+      next.timerRunning = true;
+      next.timerRemaining = state.holdDuration;
       return { state: next, effects: effects };
     }
     if (state.timerRemaining > 15) {
@@ -160,8 +163,20 @@ export function actionLongPress(state) {
   return { state: state, effects: [] };
 }
 
-// Down button long press — mode switch
+// Down button long press -- mode switch / new exercise
 export function transitionLongPress(state) {
+  if (state.mode === "rest") {
+    var next = copy(state);
+    next.mode = state.previousMode;
+    next.set = 1;
+    next.reps = 0;
+    next.timerRunning = false;
+    next.timerRemaining = 0;
+    next.holdDuration = 30;
+    next.restDuration = 30;
+    next.activeSide = "L";
+    return { state: next, effects: [] };
+  }
   if (!isFresh(state)) {
     return { state: state, effects: [] };
   }
