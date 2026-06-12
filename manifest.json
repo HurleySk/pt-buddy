@@ -1,8 +1,17 @@
 {
   "name": "PT Buddy",
-  "version": "0.1.0",
-  "description": "Physical therapy exercise tracker with rep counter, hold timer, and rest timer.",
+  "version": "1.0",
   "author": "Samuel Hurley",
-  "inputs": {},
-  "outputs": {}
+  "description": "PT exercise tracker: reps, holds, rest timers",
+  "type": "feature",
+  "usage": "workout",
+  "modificationTime": 1749700000,
+  "in": [],
+  "out": [
+    { "name": "mainValue" },
+    { "name": "progress" }
+  ],
+  "template": [
+    { "name": "t.html" }
+  ]
 }

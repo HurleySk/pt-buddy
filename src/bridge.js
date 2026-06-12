@@ -1,97 +1,113 @@
 // --- SuuntoPlus Bridge ---
-// Connects the state machine to SuuntoPlus watch APIs.
-// API calls below are best-guess from documentation — verify against
-// the SuuntoPlus Editor reference and adjust as needed.
 
 var appState;
-var lastTickTime = 0;
+var isPaused = 1;
 
-function applyEffects(effects) {
+var applyEffects = function(effects) {
   for (var i = 0; i < effects.length; i++) {
     var e = effects[i];
     if (e.type === "vibrate") {
-      if (typeof SUUNTO !== "undefined" && SUUNTO.alarms) {
-        for (var j = 0; j < e.count; j++) {
-          SUUNTO.alarms.vibrate(e.pattern);
-        }
+      if (e.pattern === "long" && e.count === 2) {
+        playIndication("Interval");
+      } else if (e.pattern === "short" && e.count === 3) {
+        playIndication("StopTimer");
+      } else if (e.pattern === "short" && e.count === 1) {
+        playIndication("Info");
       }
     }
   }
-}
+};
 
-function processResult(result) {
+var processResult = function(result) {
   appState = result.state;
   applyEffects(result.effects);
-}
+};
 
-function updateDisplay() {
-  if (typeof SUUNTO === "undefined") return;
+var formatTime = function(seconds) {
+  var m = Math.floor(seconds / 60);
+  var s = seconds % 60;
+  return m + ":" + (s < 10 ? "0" : "") + s;
+};
 
-  var modeLabels = { count: "COUNT", hold: "HOLD", rest: "REST" };
-  var themeColors = { count: "#4CAF50", hold: "#FF9800", rest: "#2196F3" };
+var updateDisplay = function(output) {
   var s = appState;
+  var modeLabels = { count: "COUNT", hold: "HOLD", rest: "REST" };
+  var modeColors = { count: "sp-c-green", hold: "sp-c-orange", rest: "sp-c-blue" };
 
-  SUUNTO.outputs.mode_label = modeLabels[s.mode] || "";
-  SUUNTO.outputs.theme_color = themeColors[s.mode] || "#fff";
+  setText("#mode-label", modeLabels[s.mode] || "");
 
   if (s.mode === "count") {
-    SUUNTO.outputs.main_value = String(s.reps);
-    SUUNTO.outputs.sub_label = "reps";
+    output.mainValue = s.reps;
+    setText("#sub-label", "reps");
   } else {
-    var mins = Math.floor(s.timerRemaining / 60);
-    var secs = s.timerRemaining % 60;
-    SUUNTO.outputs.main_value = mins + ":" + (secs < 10 ? "0" : "") + secs;
-    SUUNTO.outputs.sub_label = "remaining";
+    output.mainValue = s.timerRemaining;
+    setText("#sub-label", "remaining");
   }
+
+  setText("#main-value", s.mode === "count" ? String(s.reps) : formatTime(s.timerRemaining));
 
   if (s.mode === "rest") {
-    SUUNTO.outputs.set_label = "Next: Set " + (s.set + 1);
+    setText("#set-label", "Next: Set " + (s.set + 1));
   } else {
-    SUUNTO.outputs.set_label = "Set " + s.set;
+    setText("#set-label", "Set " + s.set);
   }
 
-  SUUNTO.outputs.bilateral = s.bilateral;
-  SUUNTO.outputs.active_side = s.activeSide;
+  if (s.bilateral) {
+    setText("#side-l", s.activeSide === "L" ? "[L]" : " L ");
+    setText("#side-r", s.activeSide === "R" ? "[R]" : " R ");
+    setStyle("#sides", "visibility", "visible");
+  } else {
+    setStyle("#sides", "visibility", "hidden");
+  }
 
   if (s.mode === "hold" || s.mode === "rest") {
     var total = s.mode === "hold" ? s.holdDuration : s.restDuration;
-    SUUNTO.outputs.progress = total > 0 ? s.timerRemaining / total : 0;
+    output.progress = total > 0 ? s.timerRemaining / total : 0;
   } else {
-    SUUNTO.outputs.progress = 0;
+    output.progress = 0;
   }
-}
+};
 
-function onLoad() {
+function onLoad(input, output) {
   appState = createState();
-  updateDisplay();
+  isPaused = 1;
 }
 
-function evaluate(context) {
-  var now = 0;
-  if (context && context.time != null) {
-    now = context.time;
-  } else if (typeof SUUNTO !== "undefined" && SUUNTO.time != null) {
-    now = SUUNTO.time;
+function onExerciseStart(input, output) {
+  isPaused = 0;
+}
+
+function onExercisePause(input, output) {
+  isPaused = 1;
+}
+
+function onExerciseContinue(input, output) {
+  isPaused = 0;
+}
+
+function evaluate(input, output) {
+  if (isPaused) return;
+
+  if (appState.timerRunning) {
+    processResult(tick(appState));
   }
 
-  if (now - lastTickTime >= 1) {
-    lastTickTime = now;
-    if (appState.timerRunning) {
-      processResult(tick(appState));
-    }
-  }
+  updateDisplay(output);
+}
 
-  if (context && context.button) {
-    if (context.button.action === "tap") {
-      processResult(actionTap(appState));
-    } else if (context.button.action === "longpress") {
-      processResult(actionLongPress(appState));
-    } else if (context.button.transition === "tap") {
-      processResult(transitionTap(appState));
-    } else if (context.button.transition === "longpress") {
-      processResult(transitionLongPress(appState));
-    }
+function onEvent(input, output, eventId) {
+  if (eventId === 1) {
+    processResult(actionTap(appState));
+  } else if (eventId === 2) {
+    processResult(actionLongPress(appState));
+  } else if (eventId === 3) {
+    processResult(transitionTap(appState));
+  } else if (eventId === 4) {
+    processResult(transitionLongPress(appState));
   }
+  updateDisplay(output);
+}
 
-  updateDisplay();
+function getUserInterface(input, output) {
+  return { template: "t" };
 }

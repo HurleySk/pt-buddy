@@ -1,0 +1,37 @@
+<uiView onLoad="
+  var modeColorMap = { COUNT: 'sp-c-green', HOLD: 'sp-c-orange', REST: 'sp-c-blue' };
+">
+  <!-- Button input -->
+  <userInput>
+    <pushButton name="up"
+      onClick="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');"
+      longPressDuration="1"
+      onLongPress="$.put('/Zapp/{zapp_index}/Event', 2, null, 'int32');" />
+    <pushButton name="down"
+      onClick="$.put('/Zapp/{zapp_index}/Event', 3, null, 'int32');"
+      longPressDuration="1"
+      onLongPress="$.put('/Zapp/{zapp_index}/Event', 4, null, 'int32');" />
+  </userInput>
+
+  <div>
+    <!-- Title bar -->
+    <div class="sp-title-bg" style="width:100%;height:15%;"></div>
+    <div id="mode-label" class="sp-title-text sp-t-m p-hc" style="top:4%;">COUNT</div>
+
+    <!-- Bilateral L/R indicators -->
+    <div id="sides" class="sp-t-s p-hc" style="top:16%;visibility:hidden;">
+      <span id="side-l">-</span>
+      <span> </span>
+      <span id="side-r">-</span>
+    </div>
+
+    <!-- Main value (rep count or timer) -->
+    <div id="main-value" class="sp-d-xxl f-num p-hc" style="top:calc(50% - 50%e);">0</div>
+
+    <!-- Sub label -->
+    <div id="sub-label" class="sp-t-s cm-mid p-hc" style="top:62%;">reps</div>
+
+    <!-- Set label -->
+    <div id="set-label" class="sp-b-m cm-mid p-hc" style="top:75%;">Set 1</div>
+  </div>
+</uiView>
