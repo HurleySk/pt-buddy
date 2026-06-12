@@ -116,12 +116,12 @@ describe("transitionTap (Down)", function () {
       expect(result.state.timerRunning).toBe(false);
       expect(result.state.set).toBe(2);
     });
-    it("resets restDuration to 30", function () {
+    it("preserves restDuration across sets", function () {
       var s = createState(); s.reps = 5;
       var rest = transitionTap(s).state;
       rest.restDuration = 45;
       var result = transitionTap(rest);
-      expect(result.state.restDuration).toBe(30);
+      expect(result.state.restDuration).toBe(45);
     });
   });
 
@@ -189,35 +189,51 @@ describe("actionLongPress (Up long)", function () {
     });
   });
 
-  describe("-15s when hold timer running", function () {
-    it("subtracts 15s", function () {
+  describe("reduce hold timer (steps below 15)", function () {
+    it("subtracts 15s above 15", function () {
       var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 25; s.holdDuration = 30;
       var result = actionLongPress(s);
       expect(result.state.timerRemaining).toBe(10);
       expect(result.state.holdDuration).toBe(15);
     });
-    it("auto-advances when timer would reach 0", function () {
-      var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 10;
+    it("steps from 10 to 5", function () {
+      var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 10; s.holdDuration = 30;
+      var result = actionLongPress(s);
+      expect(result.state.timerRemaining).toBe(5);
+      expect(result.state.mode).toBe("hold");
+    });
+    it("steps from 5 to 3", function () {
+      var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 5; s.holdDuration = 30;
+      var result = actionLongPress(s);
+      expect(result.state.timerRemaining).toBe(3);
+    });
+    it("auto-advances from 3 or below", function () {
+      var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 3;
       var result = actionLongPress(s);
       expect(result.state.mode).toBe("rest");
     });
   });
 
-  describe("-15s when rest timer running", function () {
-    it("subtracts 15s", function () {
+  describe("reduce rest timer", function () {
+    it("subtracts 15s above 15", function () {
       var s = createState(); s.reps = 5;
       var rest = transitionTap(s).state;
       var result = actionLongPress(rest);
       expect(result.state.timerRemaining).toBe(15);
       expect(result.state.restDuration).toBe(15);
     });
-    it("auto-completes rest when timer would reach 0", function () {
-      var s = createState(); s.reps = 5;
-      var rest = transitionTap(s).state;
-      rest.timerRemaining = 10;
-      var result = actionLongPress(rest);
+    it("steps from 10 to 5", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 10; s.restDuration = 30;
+      var result = actionLongPress(s);
+      expect(result.state.timerRemaining).toBe(5);
+      expect(result.state.restDuration).toBe(25);
+    });
+    it("auto-completes from 3 or below", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 3; s.restDuration = 15;
+      var result = actionLongPress(s);
       expect(result.state.mode).toBe("count");
       expect(result.state.set).toBe(2);
+      expect(result.state.restDuration).toBe(12);
     });
   });
 });
@@ -390,31 +406,37 @@ describe("haptic effects", function () {
     expect(transitionTap(s).effects).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
   });
   it("3 short when Up long subtracts hold to 0", function () {
-    var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 10;
+    var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 3;
     expect(actionLongPress(s).effects).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
   });
   it("2 long when Up long subtracts rest to 0", function () {
-    var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 10;
+    var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 3;
     expect(actionLongPress(s).effects).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
   });
 });
 
-describe("restDuration reset", function () {
-  it("resets to 30 after rest completes", function () {
+describe("restDuration persistence", function () {
+  it("persists extended rest across sets", function () {
     var s = createState(); s.reps = 5;
     var rest = transitionTap(s).state;
     var extended = actionTap(rest).state;
     expect(extended.restDuration).toBe(45);
     extended.timerRemaining = 1;
-    expect(tick(extended).state.restDuration).toBe(30);
+    var after = tick(extended).state;
+    expect(after.restDuration).toBe(45);
   });
-  it("next rest starts at 30s after extension", function () {
+  it("next rest uses persisted duration", function () {
     var s = createState(); s.reps = 5;
     var rest = transitionTap(s).state;
     var extended = actionTap(rest).state;
     extended.timerRemaining = 1;
     var after = tick(extended).state;
     after.reps = 5;
-    expect(transitionTap(after).state.timerRemaining).toBe(30);
+    expect(transitionTap(after).state.timerRemaining).toBe(45);
+  });
+  it("new exercise resets rest to 30", function () {
+    var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.restDuration = 45;
+    var result = transitionLongPress(s);
+    expect(result.state.restDuration).toBe(30);
   });
 });

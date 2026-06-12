@@ -43,6 +43,13 @@ function cycleDuration(value) {
   return DURATION_PRESETS[0];
 }
 
+function reduceTimer(remaining) {
+  if (remaining > 15) return remaining - 15;
+  if (remaining > 5) return 5;
+  if (remaining > 3) return 3;
+  return 0;
+}
+
 function transitionFromExercise(state, effects) {
   var next = copy(state);
   if (state.bilateral && state.activeSide === "L") {
@@ -75,7 +82,6 @@ function completeRest(state, effects) {
   next.timerRunning = false;
   next.timerRemaining = 0;
   next.activeSide = "L";
-  next.restDuration = 30;
   return { state: next, effects: effects };
 }
 
@@ -134,12 +140,13 @@ export function actionLongPress(state) {
   if (state.mode === "rest") {
     var next = copy(state);
     var effects = [];
-    if (state.timerRemaining > 15) {
-      next.timerRemaining = state.timerRemaining - 15;
-      next.restDuration = state.restDuration - 15;
-    } else {
+    var newRemaining = reduceTimer(state.timerRemaining);
+    var diff = state.timerRemaining - newRemaining;
+    next.restDuration = state.restDuration - diff;
+    if (newRemaining <= 0) {
       return completeRest(next, effects);
     }
+    next.timerRemaining = newRemaining;
     return { state: next, effects: effects };
   }
   if (state.mode === "hold") {
@@ -150,14 +157,15 @@ export function actionLongPress(state) {
       next.timerRemaining = state.holdDuration;
       return { state: next, effects: effects };
     }
-    if (state.timerRemaining > 15) {
-      next.timerRemaining = state.timerRemaining - 15;
-      next.holdDuration = state.holdDuration - 15;
-    } else {
+    var newRemaining = reduceTimer(state.timerRemaining);
+    var diff = state.timerRemaining - newRemaining;
+    next.holdDuration = state.holdDuration - diff;
+    if (newRemaining <= 0) {
       next.timerRemaining = 0;
       next.timerRunning = false;
       return transitionFromExercise(next, effects);
     }
+    next.timerRemaining = newRemaining;
     return { state: next, effects: effects };
   }
   return { state: state, effects: [] };
