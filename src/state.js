@@ -166,6 +166,7 @@ export function actionLongPress(state) {
 // Down button long press -- mode switch / new exercise
 export function transitionLongPress(state) {
   if (state.mode === "rest") {
+    var effects = [{ type: "vibrate", pattern: "short", count: 2 }];
     var next = copy(state);
     next.mode = state.previousMode;
     next.set = 1;
@@ -175,7 +176,7 @@ export function transitionLongPress(state) {
     next.holdDuration = 30;
     next.restDuration = 30;
     next.activeSide = "L";
-    return { state: next, effects: [] };
+    return { state: next, effects: effects };
   }
   if (!isFresh(state)) {
     return { state: state, effects: [] };

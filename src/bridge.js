@@ -11,6 +11,8 @@ var applyEffects = function(effects) {
         playIndication("Interval");
       } else if (e.pattern === "short" && e.count === 3) {
         playIndication("StopTimer");
+      } else if (e.pattern === "short" && e.count === 2) {
+        playIndication("StartTimer");
       } else if (e.pattern === "short" && e.count === 1) {
         playIndication("Info");
       }
@@ -38,11 +40,11 @@ var updateDisplay = function(output) {
   if (s.mode === "count") {
     output.mainValue = s.reps;
     setText("#main-value", String(s.reps));
-    setText("#sub-label", "reps");
+    setText("#sub-label", s.reps === 0 ? "tap UP to start" : "reps");
   } else if (s.mode === "hold" && !s.timerRunning) {
     output.mainValue = s.holdDuration;
     setText("#main-value", formatTime(s.holdDuration));
-    setText("#sub-label", "duration");
+    setText("#sub-label", "hold UP to start");
   } else {
     output.mainValue = s.timerRemaining;
     setText("#main-value", formatTime(s.timerRemaining));
@@ -50,7 +52,11 @@ var updateDisplay = function(output) {
   }
 
   if (s.mode === "rest") {
-    setText("#set-label", "Next: Set " + (s.set + 1));
+    setText("#set-label", "hold DN: new exercise");
+  } else if (s.mode === "count" && s.reps === 0) {
+    setText("#set-label", "DN:L/R  hold DN:mode");
+  } else if (s.mode === "hold" && !s.timerRunning) {
+    setText("#set-label", "DN:L/R  hold DN:mode");
   } else {
     setText("#set-label", "Set " + s.set);
   }

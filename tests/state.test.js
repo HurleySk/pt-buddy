@@ -270,6 +270,10 @@ describe("transitionLongPress (Down long)", function () {
       var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.bilateral = true;
       expect(transitionLongPress(s).state.bilateral).toBe(true);
     });
+    it("vibrates on new exercise", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count";
+      expect(transitionLongPress(s).effects).toContainEqual({ type: "vibrate", pattern: "short", count: 2 });
+    });
     it("resets activeSide to L", function () {
       var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.activeSide = "R";
       expect(transitionLongPress(s).state.activeSide).toBe("L");
