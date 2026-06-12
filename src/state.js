@@ -36,7 +36,6 @@ function stepUp(value) {
 }
 
 function stepDown(value) {
-  if (value <= 3) return 3;
   if (value <= 5) return 3;
   if (value <= 15) return 5;
   return value - 15;

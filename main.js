@@ -33,6 +33,18 @@ var isFresh = function(state) {
   return false;
 }
 
+var stepUp = function(value) {
+  if (value < 5) return 5;
+  if (value < 15) return 15;
+  return value + 15;
+}
+
+var stepDown = function(value) {
+  if (value <= 5) return 3;
+  if (value <= 15) return 5;
+  return value - 15;
+}
+
 var transitionFromExercise = function(state, effects) {
   var next = copy(state);
   if (state.bilateral && state.activeSide === "L") {
@@ -80,7 +92,7 @@ var actionTap = function(state) {
     next.restDuration = state.restDuration + 15;
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
-      next.holdDuration = state.holdDuration + 15;
+      next.holdDuration = stepUp(state.holdDuration);
     } else {
       next.timerRemaining = state.timerRemaining + 15;
       next.holdDuration = state.holdDuration + 15;
@@ -119,7 +131,7 @@ var transitionTap = function(state) {
   return { state: state, effects: effects };
 }
 
-// Up button long press
+// Up button long press — timer adjustments only
 var actionLongPress = function(state) {
   if (state.mode === "rest") {
     var next = copy(state);
@@ -136,9 +148,7 @@ var actionLongPress = function(state) {
     var next = copy(state);
     var effects = [];
     if (!state.timerRunning) {
-      if (state.holdDuration > 15) {
-        next.holdDuration = state.holdDuration - 15;
-      }
+      next.holdDuration = stepDown(state.holdDuration);
       return { state: next, effects: effects };
     }
     if (state.timerRemaining > 15) {
@@ -151,6 +161,11 @@ var actionLongPress = function(state) {
     }
     return { state: next, effects: effects };
   }
+  return { state: state, effects: [] };
+}
+
+// Down button long press — mode switch
+var transitionLongPress = function(state) {
   if (!isFresh(state)) {
     return { state: state, effects: [] };
   }
@@ -166,17 +181,6 @@ var actionLongPress = function(state) {
   next.restDuration = 30;
   next.timerRunning = false;
   next.timerRemaining = 0;
-  next.activeSide = "L";
-  return { state: next, effects: [] };
-}
-
-// Down button long press
-var transitionLongPress = function(state) {
-  if (!isFresh(state)) {
-    return { state: state, effects: [] };
-  }
-  var next = copy(state);
-  next.bilateral = !state.bilateral;
   next.activeSide = "L";
   return { state: next, effects: [] };
 }

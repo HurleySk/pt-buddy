@@ -31,7 +31,7 @@ Requires [Node.js](https://nodejs.org/) and the [SuuntoPlus Editor](https://mark
 
 ```bash
 npm install
-npm test        # run 59 state machine tests
+npm test        # run state machine tests
 npm run build   # build main.js from src/
 ```
 
