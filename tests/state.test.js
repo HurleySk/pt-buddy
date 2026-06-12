@@ -228,12 +228,17 @@ describe("actionLongPress (Up long)", function () {
       expect(result.state.timerRemaining).toBe(5);
       expect(result.state.restDuration).toBe(25);
     });
-    it("auto-completes from 3 or below", function () {
+    it("floors at 3s", function () {
+      var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 5; s.restDuration = 15;
+      var result = actionLongPress(s);
+      expect(result.state.timerRemaining).toBe(3);
+      expect(result.state.restDuration).toBe(13);
+    });
+    it("no-op at 3s", function () {
       var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 3; s.restDuration = 15;
       var result = actionLongPress(s);
-      expect(result.state.mode).toBe("count");
-      expect(result.state.set).toBe(2);
-      expect(result.state.restDuration).toBe(12);
+      expect(result.state.timerRemaining).toBe(3);
+      expect(result.state.restDuration).toBe(15);
     });
   });
 });
@@ -339,6 +344,23 @@ describe("tick", function () {
     rest.timerRemaining = 1; rest.activeSide = "R";
     expect(tick(rest).state.activeSide).toBe("L");
   });
+  it("auto-starts hold timer after rest", function () {
+    var s = createState(); s.mode = "rest"; s.previousMode = "hold"; s.holdDuration = 45; s.timerRunning = true; s.timerRemaining = 1;
+    var result = tick(s);
+    expect(result.state.mode).toBe("hold");
+    expect(result.state.timerRunning).toBe(true);
+    expect(result.state.timerRemaining).toBe(45);
+    expect(result.state.set).toBe(2);
+  });
+  it("does not auto-start in count mode after rest", function () {
+    var s = createState(); s.reps = 5;
+    var rest = transitionTap(s).state;
+    rest.timerRemaining = 1;
+    var result = tick(rest);
+    expect(result.state.mode).toBe("count");
+    expect(result.state.timerRunning).toBe(false);
+    expect(result.state.reps).toBe(0);
+  });
 });
 
 describe("bilateral hold flow", function () {
@@ -409,9 +431,9 @@ describe("haptic effects", function () {
     var s = createState(); s.mode = "hold"; s.timerRunning = true; s.timerRemaining = 3;
     expect(actionLongPress(s).effects).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
   });
-  it("2 long when Up long subtracts rest to 0", function () {
-    var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 3;
-    expect(actionLongPress(s).effects).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
+  it("2 long when skipping rest via Down tap", function () {
+    var s = createState(); s.mode = "rest"; s.previousMode = "count"; s.timerRunning = true; s.timerRemaining = 10;
+    expect(transitionTap(s).effects).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
   });
 });
 

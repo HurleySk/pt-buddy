@@ -67,7 +67,7 @@ function transitionToRest(state, effects) {
   var next = copy(state);
   next.previousMode = state.mode;
   next.mode = "rest";
-  next.timerRemaining = state.restDuration;
+  next.timerRemaining = Math.max(state.restDuration, 3);
   next.timerRunning = true;
   next.reps = 0;
   return { state: next, effects: effects };
@@ -79,9 +79,14 @@ function completeRest(state, effects) {
   next.mode = state.previousMode;
   next.set = state.set + 1;
   next.reps = 0;
-  next.timerRunning = false;
-  next.timerRemaining = 0;
   next.activeSide = "L";
+  if (state.previousMode === "hold") {
+    next.timerRunning = true;
+    next.timerRemaining = next.holdDuration;
+  } else {
+    next.timerRunning = false;
+    next.timerRemaining = 0;
+  }
   return { state: next, effects: effects };
 }
 
@@ -140,12 +145,12 @@ export function actionLongPress(state) {
   if (state.mode === "rest") {
     var next = copy(state);
     var effects = [];
-    var newRemaining = reduceTimer(state.timerRemaining);
+    var newRemaining = Math.max(reduceTimer(state.timerRemaining), 3);
+    if (newRemaining >= state.timerRemaining) {
+      return { state: state, effects: [] };
+    }
     var diff = state.timerRemaining - newRemaining;
     next.restDuration = state.restDuration - diff;
-    if (newRemaining <= 0) {
-      return completeRest(next, effects);
-    }
     next.timerRemaining = newRemaining;
     return { state: next, effects: effects };
   }
