@@ -1,8 +1,18 @@
 // PT Buddy - SuuntoPlus Sports App
-// Built from src/ — do not edit directly
+// Built from src/ -- do not edit directly
 // Run: npm run build
 
-function createState() {
+var copy = function(obj) {
+  var result = {};
+  for (var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      result[key] = obj[key];
+    }
+  }
+  return result;
+}
+
+var createState = function() {
   return {
     mode: "count",
     reps: 0,
@@ -17,14 +27,14 @@ function createState() {
   };
 }
 
-function isFresh(state) {
+var isFresh = function(state) {
   if (state.mode === "count") return state.reps === 0;
   if (state.mode === "hold") return !state.timerRunning;
   return false;
 }
 
-function transitionFromExercise(state, effects) {
-  var next = Object.assign({}, state);
+var transitionFromExercise = function(state, effects) {
+  var next = copy(state);
   if (state.bilateral && state.activeSide === "L") {
     effects.push({ type: "vibrate", pattern: "short", count: 1 });
     next.activeSide = "R";
@@ -36,8 +46,8 @@ function transitionFromExercise(state, effects) {
   return transitionToRest(next, effects);
 }
 
-function transitionToRest(state, effects) {
-  var next = Object.assign({}, state);
+var transitionToRest = function(state, effects) {
+  var next = copy(state);
   next.previousMode = state.mode;
   next.mode = "rest";
   next.timerRemaining = state.restDuration;
@@ -46,16 +56,28 @@ function transitionToRest(state, effects) {
   return { state: next, effects: effects };
 }
 
+var completeRest = function(state, effects) {
+  effects.push({ type: "vibrate", pattern: "long", count: 2 });
+  var next = copy(state);
+  next.mode = state.previousMode;
+  next.set = state.set + 1;
+  next.reps = 0;
+  next.timerRunning = false;
+  next.timerRemaining = 0;
+  next.activeSide = "L";
+  next.restDuration = 30;
+  return { state: next, effects: effects };
+}
+
 // Up button tap
-function actionTap(state) {
-  var next = Object.assign({}, state);
+var actionTap = function(state) {
+  var next = copy(state);
   var effects = [];
   if (state.mode === "count") {
     next.reps = state.reps + 1;
   } else if (state.mode === "rest") {
     next.timerRemaining = state.timerRemaining + 15;
     next.restDuration = state.restDuration + 15;
-    return { state: next, effects: effects };
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
       next.holdDuration = state.holdDuration + 15;
@@ -67,96 +89,15 @@ function actionTap(state) {
   return { state: next, effects: effects };
 }
 
-function completeRest(state, effects) {
-  effects.push({ type: "vibrate", pattern: "long", count: 2 });
-  var next = Object.assign({}, state);
-  next.mode = state.previousMode;
-  next.set = state.set + 1;
-  next.reps = 0;
-  next.timerRunning = false;
-  next.timerRemaining = 0;
-  next.activeSide = "L";
-  next.restDuration = 30;
-  return { state: next, effects: effects };
-}
-
 // Down button tap
-function transitionTap(state) {
-  var next = Object.assign({}, state);
+var transitionTap = function(state) {
+  var next = copy(state);
   var effects = [];
   if (state.mode === "count") {
     if (state.reps === 0) {
-      return { state: state, effects: effects };
-    }
-    next.reps = state.reps - 1;
-    return { state: next, effects: effects };
-  } else if (state.mode === "rest") {
-    if (state.timerRemaining > 15) {
-      next.timerRemaining = state.timerRemaining - 15;
-      next.restDuration = state.restDuration - 15;
-    } else {
-      return completeRest(next, effects);
-    }
-    return { state: next, effects: effects };
-  } else if (state.mode === "hold") {
-    if (!state.timerRunning) {
-      if (state.holdDuration > 15) {
-        next.holdDuration = state.holdDuration - 15;
-      }
-    } else {
-      if (state.timerRemaining > 15) {
-        next.timerRemaining = state.timerRemaining - 15;
-        next.holdDuration = state.holdDuration - 15;
-      } else {
-        next.timerRemaining = 0;
-        next.timerRunning = false;
-        return transitionFromExercise(next, effects);
-      }
-    }
-    return { state: next, effects: effects };
-  }
-  return { state: state, effects: effects };
-}
-
-// Down button long press
-function transitionLongPress(state) {
-  if (!isFresh(state)) {
-    return { state: state, effects: [] };
-  }
-  var next = Object.assign({}, state);
-  next.bilateral = !state.bilateral;
-  next.activeSide = "L";
-  return { state: next, effects: [] };
-}
-
-// Up button long press
-function actionLongPress(state) {
-  if (!isFresh(state)) {
-    return { state: state, effects: [] };
-  }
-  var next = Object.assign({}, state);
-  if (state.mode === "count") {
-    next.mode = "hold";
-  } else if (state.mode === "hold") {
-    next.mode = "count";
-  }
-  next.reps = 0;
-  next.set = 1;
-  next.holdDuration = 30;
-  next.restDuration = 30;
-  next.timerRunning = false;
-  next.timerRemaining = 0;
-  next.activeSide = "L";
-  return { state: next, effects: [] };
-}
-
-// Next/middle button tap
-function nextTap(state) {
-  var next = Object.assign({}, state);
-  var effects = [];
-  if (state.mode === "count") {
-    if (state.reps === 0) {
-      return { state: state, effects: effects };
+      next.bilateral = !state.bilateral;
+      next.activeSide = "L";
+      return { state: next, effects: effects };
     }
     if (state.bilateral && state.activeSide === "L") {
       effects.push({ type: "vibrate", pattern: "short", count: 1 });
@@ -178,11 +119,73 @@ function nextTap(state) {
   return { state: state, effects: effects };
 }
 
-function tick(state) {
+// Up button long press
+var actionLongPress = function(state) {
+  if (state.mode === "rest") {
+    var next = copy(state);
+    var effects = [];
+    if (state.timerRemaining > 15) {
+      next.timerRemaining = state.timerRemaining - 15;
+      next.restDuration = state.restDuration - 15;
+    } else {
+      return completeRest(next, effects);
+    }
+    return { state: next, effects: effects };
+  }
+  if (state.mode === "hold") {
+    var next = copy(state);
+    var effects = [];
+    if (!state.timerRunning) {
+      if (state.holdDuration > 15) {
+        next.holdDuration = state.holdDuration - 15;
+      }
+      return { state: next, effects: effects };
+    }
+    if (state.timerRemaining > 15) {
+      next.timerRemaining = state.timerRemaining - 15;
+      next.holdDuration = state.holdDuration - 15;
+    } else {
+      next.timerRemaining = 0;
+      next.timerRunning = false;
+      return transitionFromExercise(next, effects);
+    }
+    return { state: next, effects: effects };
+  }
+  if (!isFresh(state)) {
+    return { state: state, effects: [] };
+  }
+  var next = copy(state);
+  if (state.mode === "count") {
+    next.mode = "hold";
+  } else if (state.mode === "hold") {
+    next.mode = "count";
+  }
+  next.reps = 0;
+  next.set = 1;
+  next.holdDuration = 30;
+  next.restDuration = 30;
+  next.timerRunning = false;
+  next.timerRemaining = 0;
+  next.activeSide = "L";
+  return { state: next, effects: [] };
+}
+
+// Down button long press
+var transitionLongPress = function(state) {
+  if (!isFresh(state)) {
+    return { state: state, effects: [] };
+  }
+  var next = copy(state);
+  next.bilateral = !state.bilateral;
+  next.activeSide = "L";
+  return { state: next, effects: [] };
+}
+
+var tick = function(state) {
   if (!state.timerRunning) {
     return { state: state, effects: [] };
   }
-  var next = Object.assign({}, state);
+  var next = copy(state);
   var effects = [];
   next.timerRemaining = state.timerRemaining - 1;
   if (next.timerRemaining <= 5 && state.timerRemaining > 5) {
@@ -259,9 +262,9 @@ var updateDisplay = function(output) {
   if (s.bilateral) {
     setText("#side-l", s.activeSide === "L" ? "[L]" : " L ");
     setText("#side-r", s.activeSide === "R" ? "[R]" : " R ");
-    setStyle("#sides", "visibility", "visible");
   } else {
-    setStyle("#sides", "visibility", "hidden");
+    setText("#side-l", "");
+    setText("#side-r", "");
   }
 
   if (s.mode === "hold" || s.mode === "rest") {
@@ -308,10 +311,7 @@ function onEvent(input, output, eventId) {
     processResult(transitionTap(appState));
   } else if (eventId === 4) {
     processResult(transitionLongPress(appState));
-  } else if (eventId === 5) {
-    processResult(nextTap(appState));
   }
-  updateDisplay(output);
 }
 
 function getUserInterface(input, output) {

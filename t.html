@@ -6,7 +6,7 @@
     </div>
 
     <!-- Bilateral L/R indicators -->
-    <div id="sides" class="cm-mid sp-t-s p-hc" style="top:calc(32% - 50%e);visibility:hidden">
+    <div id="sides" class="cm-mid sp-t-s p-hc" style="top:calc(32% - 50%e)">
       <span id="side-l">-</span>
       <span> </span>
       <span id="side-r">-</span>
@@ -23,12 +23,10 @@
 
     <!-- Button handlers -->
     <userInput>
-      <pushButton name="up"
+      <pushButton name="up" longPressDuration="1"
         onClick="$.put('/Zapp/{zapp_index}/Event', 1, null, 'int32');"
         onLongPressStart="$.put('/Zapp/{zapp_index}/Event', 2, null, 'int32');" />
-      <pushButton name="next"
-        onClick="$.put('/Zapp/{zapp_index}/Event', 5, null, 'int32');" />
-      <pushButton name="down"
+      <pushButton name="down" longType="normal" longPressDuration="1"
         onClick="$.put('/Zapp/{zapp_index}/Event', 3, null, 'int32');"
         onLongPressStart="$.put('/Zapp/{zapp_index}/Event', 4, null, 'int32');" />
     </userInput>

@@ -58,9 +58,9 @@ var updateDisplay = function(output) {
   if (s.bilateral) {
     setText("#side-l", s.activeSide === "L" ? "[L]" : " L ");
     setText("#side-r", s.activeSide === "R" ? "[R]" : " R ");
-    setStyle("#sides", "visibility", "visible");
   } else {
-    setStyle("#sides", "visibility", "hidden");
+    setText("#side-l", "");
+    setText("#side-r", "");
   }
 
   if (s.mode === "hold" || s.mode === "rest") {
@@ -107,10 +107,7 @@ function onEvent(input, output, eventId) {
     processResult(transitionTap(appState));
   } else if (eventId === 4) {
     processResult(transitionLongPress(appState));
-  } else if (eventId === 5) {
-    processResult(nextTap(appState));
   }
-  updateDisplay(output);
 }
 
 function getUserInterface(input, output) {
