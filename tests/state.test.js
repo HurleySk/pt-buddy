@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { createState, isFresh, actionTap, transitionTap, tick, actionLongPress, transitionLongPress } from "../src/state.js";
+import { createState, isFresh, actionTap, transitionTap, tick, actionLongPress, transitionLongPress, nextTap } from "../src/state.js";
 
 describe("createState", function () {
   it("returns default state", function () {
@@ -49,7 +49,7 @@ describe("isFresh", function () {
   });
 });
 
-describe("actionTap", function () {
+describe("actionTap (Up button)", function () {
   it("increments reps in count mode", function () {
     var s = createState();
     var result = actionTap(s);
@@ -75,20 +75,15 @@ describe("actionTap", function () {
     function enterRest() {
       var s = createState();
       s.reps = 5;
-      return transitionTap(s).state;
+      return nextTap(s).state;
     }
 
-    it("ends rest early and returns to previous mode", function () {
+    it("adds 15s to rest timer", function () {
       var s = enterRest();
+      expect(s.timerRemaining).toBe(30);
       var result = actionTap(s);
-      expect(result.state.mode).toBe("count");
-      expect(result.state.timerRunning).toBe(false);
-    });
-
-    it("increments set when ending rest early", function () {
-      var s = enterRest();
-      var result = actionTap(s);
-      expect(result.state.set).toBe(2);
+      expect(result.state.timerRemaining).toBe(45);
+      expect(result.state.restDuration).toBe(45);
     });
   });
 
@@ -99,32 +94,34 @@ describe("actionTap", function () {
       return s;
     }
 
-    it("starts hold timer when stopped", function () {
+    it("increases holdDuration by 15 before starting", function () {
       var s = freshHold();
       var result = actionTap(s);
-      expect(result.state.timerRunning).toBe(true);
-      expect(result.state.timerRemaining).toBe(30);
+      expect(result.state.holdDuration).toBe(45);
+      expect(result.state.timerRunning).toBe(false);
     });
 
-    it("uses configured holdDuration", function () {
+    it("accumulates holdDuration increases", function () {
       var s = freshHold();
-      s.holdDuration = 45;
-      var result = actionTap(s);
-      expect(result.state.timerRemaining).toBe(45);
+      var r1 = actionTap(s);
+      var r2 = actionTap(r1.state);
+      expect(r2.state.holdDuration).toBe(60);
+      expect(r2.state.timerRunning).toBe(false);
     });
 
-    it("ends hold early when timer is running", function () {
+    it("adds 15s when timer is running", function () {
       var s = freshHold();
       s.timerRunning = true;
-      s.timerRemaining = 15;
+      s.timerRemaining = 20;
+      s.holdDuration = 30;
       var result = actionTap(s);
-      expect(result.state.mode).toBe("rest");
-      expect(result.state.previousMode).toBe("hold");
+      expect(result.state.timerRemaining).toBe(35);
+      expect(result.state.holdDuration).toBe(45);
     });
   });
 });
 
-describe("transitionTap", function () {
+describe("transitionTap (Down button)", function () {
   describe("in count mode", function () {
     it("does nothing with 0 reps", function () {
       var s = createState();
@@ -133,31 +130,17 @@ describe("transitionTap", function () {
       expect(result.state.reps).toBe(0);
     });
 
-    it("transitions to rest with reps > 0", function () {
+    it("decrements reps when reps > 0", function () {
       var s = createState();
-      s.reps = 10;
+      s.reps = 3;
       var result = transitionTap(s);
-      expect(result.state.mode).toBe("rest");
+      expect(result.state.reps).toBe(2);
+      expect(result.state.mode).toBe("count");
     });
 
-    it("sets previousMode to count", function () {
+    it("decrements to 0", function () {
       var s = createState();
-      s.reps = 10;
-      var result = transitionTap(s);
-      expect(result.state.previousMode).toBe("count");
-    });
-
-    it("starts rest timer with restDuration", function () {
-      var s = createState();
-      s.reps = 10;
-      var result = transitionTap(s);
-      expect(result.state.timerRunning).toBe(true);
-      expect(result.state.timerRemaining).toBe(30);
-    });
-
-    it("resets reps to 0", function () {
-      var s = createState();
-      s.reps = 10;
+      s.reps = 1;
       var result = transitionTap(s);
       expect(result.state.reps).toBe(0);
     });
@@ -167,34 +150,134 @@ describe("transitionTap", function () {
     function enterRest() {
       var s = createState();
       s.reps = 5;
-      return transitionTap(s).state;
+      return nextTap(s).state;
     }
 
-    it("adds 10s to rest timer", function () {
+    it("subtracts 15s from rest timer", function () {
       var s = enterRest();
-      expect(s.timerRemaining).toBe(30);
+      s.timerRemaining = 30;
+      s.restDuration = 30;
       var result = transitionTap(s);
-      expect(result.state.timerRemaining).toBe(40);
-      expect(result.state.restDuration).toBe(40);
+      expect(result.state.timerRemaining).toBe(15);
+      expect(result.state.restDuration).toBe(15);
+    });
+
+    it("auto-completes rest when timer would go to 0 or below", function () {
+      var s = enterRest();
+      s.timerRemaining = 10;
+      var result = transitionTap(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.timerRunning).toBe(false);
+      expect(result.state.set).toBe(2);
     });
   });
 
   describe("in hold mode", function () {
-    it("adds 10s to hold duration before starting", function () {
+    it("decreases holdDuration by 15 before starting", function () {
       var s = createState();
       s.mode = "hold";
-      expect(s.holdDuration).toBe(30);
+      s.holdDuration = 45;
       var result = transitionTap(s);
-      expect(result.state.holdDuration).toBe(40);
+      expect(result.state.holdDuration).toBe(30);
     });
 
-    it("does nothing while hold timer is running", function () {
+    it("does not decrease holdDuration below 15", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.holdDuration = 15;
+      var result = transitionTap(s);
+      expect(result.state.holdDuration).toBe(15);
+    });
+
+    it("subtracts 15s while timer is running", function () {
       var s = createState();
       s.mode = "hold";
       s.timerRunning = true;
-      s.timerRemaining = 20;
+      s.timerRemaining = 25;
+      s.holdDuration = 30;
       var result = transitionTap(s);
-      expect(result.state.timerRemaining).toBe(20);
+      expect(result.state.timerRemaining).toBe(10);
+      expect(result.state.holdDuration).toBe(15);
+    });
+
+    it("auto-advances when subtracting would reach 0", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.timerRunning = true;
+      s.timerRemaining = 10;
+      var result = transitionTap(s);
+      expect(result.state.mode).toBe("rest");
+      expect(result.state.timerRemaining).toBe(30);
+    });
+  });
+});
+
+describe("nextTap (Next button)", function () {
+  describe("in count mode", function () {
+    it("does nothing with 0 reps", function () {
+      var s = createState();
+      var result = nextTap(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.reps).toBe(0);
+    });
+
+    it("transitions to rest with reps > 0", function () {
+      var s = createState();
+      s.reps = 10;
+      var result = nextTap(s);
+      expect(result.state.mode).toBe("rest");
+      expect(result.state.previousMode).toBe("count");
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
+      expect(result.state.reps).toBe(0);
+    });
+  });
+
+  describe("in rest mode", function () {
+    function enterRest() {
+      var s = createState();
+      s.reps = 5;
+      return nextTap(s).state;
+    }
+
+    it("skips rest and returns to previous mode", function () {
+      var s = enterRest();
+      var result = nextTap(s);
+      expect(result.state.mode).toBe("count");
+      expect(result.state.timerRunning).toBe(false);
+    });
+
+    it("increments set", function () {
+      var s = enterRest();
+      var result = nextTap(s);
+      expect(result.state.set).toBe(2);
+    });
+
+    it("resets restDuration to 30", function () {
+      var s = enterRest();
+      s.restDuration = 45;
+      var result = nextTap(s);
+      expect(result.state.restDuration).toBe(30);
+    });
+  });
+
+  describe("in hold mode", function () {
+    it("starts timer when stopped", function () {
+      var s = createState();
+      s.mode = "hold";
+      var result = nextTap(s);
+      expect(result.state.timerRunning).toBe(true);
+      expect(result.state.timerRemaining).toBe(30);
+    });
+
+    it("ends hold early when timer is running", function () {
+      var s = createState();
+      s.mode = "hold";
+      s.timerRunning = true;
+      s.timerRemaining = 15;
+      var result = nextTap(s);
+      expect(result.state.mode).toBe("rest");
+      expect(result.state.previousMode).toBe("hold");
     });
   });
 });
@@ -203,7 +286,7 @@ describe("tick", function () {
   function enterRest() {
     var s = createState();
     s.reps = 5;
-    return transitionTap(s).state;
+    return nextTap(s).state;
   }
 
   it("does nothing when timer is not running", function () {
@@ -396,26 +479,26 @@ describe("bilateral count flow", function () {
     s.bilateral = true;
     return s;
   }
-  it("switches from L to R on first transitionTap", function () {
+  it("switches from L to R on nextTap", function () {
     var s = bilateralCount();
     s.reps = 5;
-    var result = transitionTap(s);
+    var result = nextTap(s);
     expect(result.state.mode).toBe("count");
     expect(result.state.activeSide).toBe("R");
     expect(result.state.reps).toBe(0);
   });
-  it("transitions to rest on second transitionTap (R side)", function () {
+  it("transitions to rest on nextTap from R side", function () {
     var s = bilateralCount();
     s.reps = 5;
     s.activeSide = "R";
-    var result = transitionTap(s);
+    var result = nextTap(s);
     expect(result.state.mode).toBe("rest");
   });
   it("returns to L side after rest completes", function () {
     var s = bilateralCount();
     s.reps = 5;
     s.activeSide = "R";
-    var restState = transitionTap(s).state;
+    var restState = nextTap(s).state;
     restState.timerRemaining = 1;
     var result = tick(restState);
     expect(result.state.activeSide).toBe("L");
@@ -464,6 +547,16 @@ describe("bilateral hold flow", function () {
     var result = tick(s);
     expect(result.state.timerRemaining).toBe(45);
   });
+  it("switches from L to R on nextTap (early exit)", function () {
+    var s = bilateralHold();
+    s.timerRunning = true;
+    s.timerRemaining = 15;
+    var result = nextTap(s);
+    expect(result.state.mode).toBe("hold");
+    expect(result.state.activeSide).toBe("R");
+    expect(result.state.timerRunning).toBe(true);
+    expect(result.state.timerRemaining).toBe(30);
+  });
 });
 
 describe("haptic effects", function () {
@@ -491,7 +584,7 @@ describe("haptic effects", function () {
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
   });
-  it("1 short pulse on side switch (bilateral hold L→R)", function () {
+  it("1 short pulse on side switch (bilateral hold L→R via tick)", function () {
     var s = createState();
     s.mode = "hold";
     s.bilateral = true;
@@ -502,12 +595,12 @@ describe("haptic effects", function () {
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
   });
-  it("1 short pulse on side switch (bilateral count L→R)", function () {
+  it("1 short pulse on side switch (bilateral count L→R via nextTap)", function () {
     var s = createState();
     s.bilateral = true;
     s.activeSide = "L";
     s.reps = 5;
-    var result = transitionTap(s);
+    var result = nextTap(s);
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
   });
@@ -527,24 +620,43 @@ describe("haptic effects", function () {
     var result = tick(s);
     expect(result.effects).toEqual([]);
   });
-  it("2 long pulses when ending rest early via actionTap", function () {
+  it("2 long pulses when skipping rest via nextTap", function () {
     var s = createState();
     s.mode = "rest";
     s.previousMode = "count";
     s.timerRunning = true;
     s.timerRemaining = 20;
-    var result = actionTap(s);
+    var result = nextTap(s);
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
   });
-  it("3 short pulses when ending hold early via actionTap", function () {
+  it("3 short pulses when ending hold early via nextTap", function () {
     var s = createState();
     s.mode = "hold";
     s.timerRunning = true;
     s.timerRemaining = 15;
-    var result = actionTap(s);
+    var result = nextTap(s);
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
+  });
+  it("3 short pulses when Down subtracts hold timer to 0", function () {
+    var s = createState();
+    s.mode = "hold";
+    s.timerRunning = true;
+    s.timerRemaining = 10;
+    var result = transitionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 3 });
+  });
+  it("2 long pulses when Down subtracts rest timer to 0", function () {
+    var s = createState();
+    s.mode = "rest";
+    s.previousMode = "count";
+    s.timerRunning = true;
+    s.timerRemaining = 10;
+    var result = transitionTap(s);
+    var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
+    expect(vibes).toContainEqual({ type: "vibrate", pattern: "long", count: 2 });
   });
 });
 
@@ -552,9 +664,9 @@ describe("restDuration reset", function () {
   it("resets restDuration to 30 after rest completes", function () {
     var s = createState();
     s.reps = 5;
-    var rest = transitionTap(s).state;
-    var extended = transitionTap(rest).state;
-    expect(extended.restDuration).toBe(40);
+    var rest = nextTap(s).state;
+    var extended = actionTap(rest).state;
+    expect(extended.restDuration).toBe(45);
     extended.timerRemaining = 1;
     var done = tick(extended).state;
     expect(done.restDuration).toBe(30);
@@ -563,25 +675,25 @@ describe("restDuration reset", function () {
   it("next rest starts at 30s even after previous rest was extended", function () {
     var s = createState();
     s.reps = 5;
-    var rest = transitionTap(s).state;
-    var extended = transitionTap(rest).state;
+    var rest = nextTap(s).state;
+    var extended = actionTap(rest).state;
     extended.timerRemaining = 1;
     var afterRest = tick(extended).state;
     afterRest.reps = 5;
-    var nextRest = transitionTap(afterRest).state;
+    var nextRest = nextTap(afterRest).state;
     expect(nextRest.timerRemaining).toBe(30);
   });
 });
 
-describe("bilateral hold early exit", function () {
-  it("switches from L to R when ending hold early via actionTap", function () {
+describe("bilateral hold early exit via nextTap", function () {
+  it("switches from L to R when ending hold early", function () {
     var s = createState();
     s.mode = "hold";
     s.bilateral = true;
     s.activeSide = "L";
     s.timerRunning = true;
     s.timerRemaining = 15;
-    var result = actionTap(s);
+    var result = nextTap(s);
     expect(result.state.mode).toBe("hold");
     expect(result.state.activeSide).toBe("R");
     expect(result.state.timerRunning).toBe(true);
@@ -595,7 +707,7 @@ describe("bilateral hold early exit", function () {
     s.activeSide = "L";
     s.timerRunning = true;
     s.timerRemaining = 15;
-    var result = actionTap(s);
+    var result = nextTap(s);
     var vibes = result.effects.filter(function (e) { return e.type === "vibrate"; });
     expect(vibes).toContainEqual({ type: "vibrate", pattern: "short", count: 1 });
   });

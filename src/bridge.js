@@ -32,19 +32,22 @@ var formatTime = function(seconds) {
 var updateDisplay = function(output) {
   var s = appState;
   var modeLabels = { count: "COUNT", hold: "HOLD", rest: "REST" };
-  var modeColors = { count: "sp-c-green", hold: "sp-c-orange", rest: "sp-c-blue" };
 
   setText("#mode-label", modeLabels[s.mode] || "");
 
   if (s.mode === "count") {
     output.mainValue = s.reps;
+    setText("#main-value", String(s.reps));
     setText("#sub-label", "reps");
+  } else if (s.mode === "hold" && !s.timerRunning) {
+    output.mainValue = s.holdDuration;
+    setText("#main-value", formatTime(s.holdDuration));
+    setText("#sub-label", "duration");
   } else {
     output.mainValue = s.timerRemaining;
+    setText("#main-value", formatTime(s.timerRemaining));
     setText("#sub-label", "remaining");
   }
-
-  setText("#main-value", s.mode === "count" ? String(s.reps) : formatTime(s.timerRemaining));
 
   if (s.mode === "rest") {
     setText("#set-label", "Next: Set " + (s.set + 1));
@@ -104,6 +107,8 @@ function onEvent(input, output, eventId) {
     processResult(transitionTap(appState));
   } else if (eventId === 4) {
     processResult(transitionLongPress(appState));
+  } else if (eventId === 5) {
+    processResult(nextTap(appState));
   }
   updateDisplay(output);
 }

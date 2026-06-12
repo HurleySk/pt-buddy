@@ -46,19 +46,22 @@ function transitionToRest(state, effects) {
   return { state: next, effects: effects };
 }
 
+// Up button tap
 function actionTap(state) {
   var next = Object.assign({}, state);
   var effects = [];
   if (state.mode === "count") {
     next.reps = state.reps + 1;
   } else if (state.mode === "rest") {
-    return completeRest(next, effects);
+    next.timerRemaining = state.timerRemaining + 15;
+    next.restDuration = state.restDuration + 15;
+    return { state: next, effects: effects };
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
-      next.timerRunning = true;
-      next.timerRemaining = state.holdDuration;
+      next.holdDuration = state.holdDuration + 15;
     } else {
-      return transitionFromExercise(next, effects);
+      next.timerRemaining = state.timerRemaining + 15;
+      next.holdDuration = state.holdDuration + 15;
     }
   }
   return { state: next, effects: effects };
@@ -77,6 +80,7 @@ function completeRest(state, effects) {
   return { state: next, effects: effects };
 }
 
+// Down button tap
 function transitionTap(state) {
   var next = Object.assign({}, state);
   var effects = [];
@@ -84,26 +88,37 @@ function transitionTap(state) {
     if (state.reps === 0) {
       return { state: state, effects: effects };
     }
-    if (state.bilateral && state.activeSide === "L") {
-      effects.push({ type: "vibrate", pattern: "short", count: 1 });
-      next.activeSide = "R";
-      next.reps = 0;
-      return { state: next, effects: effects };
-    }
-    return transitionToRest(next, effects);
+    next.reps = state.reps - 1;
+    return { state: next, effects: effects };
   } else if (state.mode === "rest") {
-    next.timerRemaining = state.timerRemaining + 10;
-    next.restDuration = state.restDuration + 10;
+    if (state.timerRemaining > 15) {
+      next.timerRemaining = state.timerRemaining - 15;
+      next.restDuration = state.restDuration - 15;
+    } else {
+      return completeRest(next, effects);
+    }
     return { state: next, effects: effects };
   } else if (state.mode === "hold") {
     if (!state.timerRunning) {
-      next.holdDuration = state.holdDuration + 10;
+      if (state.holdDuration > 15) {
+        next.holdDuration = state.holdDuration - 15;
+      }
+    } else {
+      if (state.timerRemaining > 15) {
+        next.timerRemaining = state.timerRemaining - 15;
+        next.holdDuration = state.holdDuration - 15;
+      } else {
+        next.timerRemaining = 0;
+        next.timerRunning = false;
+        return transitionFromExercise(next, effects);
+      }
     }
     return { state: next, effects: effects };
   }
   return { state: state, effects: effects };
 }
 
+// Down button long press
 function transitionLongPress(state) {
   if (!isFresh(state)) {
     return { state: state, effects: [] };
@@ -114,6 +129,7 @@ function transitionLongPress(state) {
   return { state: next, effects: [] };
 }
 
+// Up button long press
 function actionLongPress(state) {
   if (!isFresh(state)) {
     return { state: state, effects: [] };
@@ -132,6 +148,34 @@ function actionLongPress(state) {
   next.timerRemaining = 0;
   next.activeSide = "L";
   return { state: next, effects: [] };
+}
+
+// Next/middle button tap
+function nextTap(state) {
+  var next = Object.assign({}, state);
+  var effects = [];
+  if (state.mode === "count") {
+    if (state.reps === 0) {
+      return { state: state, effects: effects };
+    }
+    if (state.bilateral && state.activeSide === "L") {
+      effects.push({ type: "vibrate", pattern: "short", count: 1 });
+      next.activeSide = "R";
+      next.reps = 0;
+      return { state: next, effects: effects };
+    }
+    return transitionToRest(next, effects);
+  } else if (state.mode === "rest") {
+    return completeRest(next, effects);
+  } else if (state.mode === "hold") {
+    if (!state.timerRunning) {
+      next.timerRunning = true;
+      next.timerRemaining = state.holdDuration;
+      return { state: next, effects: effects };
+    }
+    return transitionFromExercise(next, effects);
+  }
+  return { state: state, effects: effects };
 }
 
 function tick(state) {
@@ -189,19 +233,22 @@ var formatTime = function(seconds) {
 var updateDisplay = function(output) {
   var s = appState;
   var modeLabels = { count: "COUNT", hold: "HOLD", rest: "REST" };
-  var modeColors = { count: "sp-c-green", hold: "sp-c-orange", rest: "sp-c-blue" };
 
   setText("#mode-label", modeLabels[s.mode] || "");
 
   if (s.mode === "count") {
     output.mainValue = s.reps;
+    setText("#main-value", String(s.reps));
     setText("#sub-label", "reps");
+  } else if (s.mode === "hold" && !s.timerRunning) {
+    output.mainValue = s.holdDuration;
+    setText("#main-value", formatTime(s.holdDuration));
+    setText("#sub-label", "duration");
   } else {
     output.mainValue = s.timerRemaining;
+    setText("#main-value", formatTime(s.timerRemaining));
     setText("#sub-label", "remaining");
   }
-
-  setText("#main-value", s.mode === "count" ? String(s.reps) : formatTime(s.timerRemaining));
 
   if (s.mode === "rest") {
     setText("#set-label", "Next: Set " + (s.set + 1));
@@ -261,6 +308,8 @@ function onEvent(input, output, eventId) {
     processResult(transitionTap(appState));
   } else if (eventId === 4) {
     processResult(transitionLongPress(appState));
+  } else if (eventId === 5) {
+    processResult(nextTap(appState));
   }
   updateDisplay(output);
 }
